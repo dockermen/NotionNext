@@ -1,42 +1,48 @@
-import { siteConfig } from '@/lib/config'
-import Head from 'next/head'
-import { useEffect, useRef, useState } from 'react'
+import { siteConfig } from '@/lib/config' // 导入 siteConfig 方法，用于获取站点配置
+import Head from 'next/head' // 导入 Head 组件，用于在 Next.js 中管理文档的 <head> 标签
+import { useEffect, useRef, useState } from 'react' // 导入 React 的三个 Hook：useEffect、useRef 和 useState，分别用于副作用处理、引用 DOM 元素和管理组件状态
 
 /**
- * 图片懒加载
- * @param {*} param0
- * @returns
+ * LazyImage 组件用于实现图片的懒加载功能
+ * @param {Object} props - 组件的属性
+ * @returns {JSX.Element|null} - 返回图片元素或null
  */
 export default function LazyImage({
-  priority,
-  id,
-  src,
-  alt,
-  placeholderSrc,
-  className,
-  width,
-  height,
-  title,
-  onLoad,
-  onClick,
-  style
+  priority, // 是否优先加载
+  id, // 图片的ID
+  src, // 图片的源地址
+  alt, // 图片的替代文本
+  placeholderSrc, // 占位符图片的源地址
+  className, // 图片的类名
+  width, // 图片的宽度
+  height, // 图片的高度
+  title, // 图片的标题
+  onLoad, // 图片加载完成的回调函数
+  onClick, // 图片点击的回调函数
+  style // 图片的样式
 }) {
+  // 获取图片最大压缩宽度和默认占位符图片地址
   const maxWidth = siteConfig('IMAGE_COMPRESS_WIDTH')
   const defaultPlaceholderSrc = siteConfig('IMG_LAZY_LOAD_PLACEHOLDER')
-  const imageRef = useRef(null)
+  const imageRef = useRef(null) // 创建一个引用来访问DOM元素
   const [currentSrc, setCurrentSrc] = useState(
-    placeholderSrc || defaultPlaceholderSrc
+    placeholderSrc || defaultPlaceholderSrc // 初始化图片源为占位符
   )
 
   /**
-   * 占位图加载成功
+   * 占位图加载成功的处理函数
    */
   const handleThumbnailLoaded = () => {
     if (typeof onLoad === 'function') {
+      // 如果传递了onLoad回调函数，则调用它
       // onLoad() // 触发传递的onLoad回调函数
     }
   }
-  // 原图加载完成
+
+  /**
+   * 原图加载完成的处理函数
+   * @param {string} img - 加载完成的图片源
+   */
   const handleImageLoaded = img => {
     if (typeof onLoad === 'function') {
       onLoad() // 触发传递的onLoad回调函数
@@ -46,8 +52,9 @@ export default function LazyImage({
       imageRef.current.classList.remove('lazy-image-placeholder')
     }
   }
+
   /**
-   * 图片加载失败回调
+   * 图片加载失败的处理函数
    */
   const handleImageError = () => {
     if (imageRef.current) {
@@ -65,34 +72,36 @@ export default function LazyImage({
   }
 
   useEffect(() => {
+    // 调整图片尺寸
     const adjustedImageSrc =
       adjustImgSize(src, maxWidth) || defaultPlaceholderSrc
 
+    // 创建IntersectionObserver实例，用于懒加载图片
     const observer = new IntersectionObserver(
       entries => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
-            // 拉取图片
+            // 当图片进入视口时，开始加载图片
             const img = new Image()
             img.src = adjustedImageSrc
             img.onload = () => {
-              setCurrentSrc(adjustedImageSrc)
-              handleImageLoaded(adjustedImageSrc)
+              setCurrentSrc(adjustedImageSrc) // 更新图片源
+              handleImageLoaded(adjustedImageSrc) // 调用图片加载完成的处理函数
             }
-            img.onerror = handleImageError
+            img.onerror = handleImageError // 设置图片加载失败的处理函数
 
-            observer.unobserve(entry.target)
+            observer.unobserve(entry.target) // 停止观察当前图片
           }
         })
       },
-      { rootMargin: '50px 0px' } // 轻微提前加载
+      { rootMargin: '50px 0px' } // 设置提前加载的距离
     )
     if (imageRef.current) {
-      observer.observe(imageRef.current)
+      observer.observe(imageRef.current) // 开始观察图片
     }
     return () => {
       if (imageRef.current) {
-        observer.unobserve(imageRef.current)
+        observer.unobserve(imageRef.current) // 组件卸载时停止观察
       }
     }
   }, [src, maxWidth])
@@ -112,23 +121,25 @@ export default function LazyImage({
     onClick
   }
 
-  if (id) imgProps.id = id
-  if (title) imgProps.title = title
+  if (id) imgProps.id = id // 如果提供了id，则添加到imgProps
+  if (title) imgProps.title = title // 如果提供了title，则添加到imgProps
 
   if (!src) {
-    return null
+    return null // 如果没有提供src，则返回null
   }
 
   return (
     <>
+      {/* 使用img标签显示图片 */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img {...imgProps} />
-      {/* 预加载 */}
+      {/* 如果设置了priority，则预加载图片 */}
       {priority && (
         <Head>
           <link rel='preload' as='image' href={adjustImgSize(src, maxWidth)} />
         </Head>
       )}
+      {/* 定义占位符的样式和动画 */}
       <style>
         {` 
         .lazy-image-placeholder{
@@ -149,18 +160,18 @@ export default function LazyImage({
 
 /**
  * 根据窗口尺寸决定压缩图片宽度
- * @param {*} src
- * @param {*} maxWidth
- * @returns
+ * @param {string} src - 图片的源地址
+ * @param {number} maxWidth - 最大宽度
+ * @returns {string|null} - 返回调整后的图片地址或null
  */
 const adjustImgSize = (src, maxWidth) => {
   if (!src) {
-    return null
+    return null // 如果没有提供src，则返回null
   }
   const screenWidth =
     (typeof window !== 'undefined' && window?.screen?.width) || maxWidth
 
-  // 屏幕尺寸大于默认图片尺寸，没必要再压缩
+  // 如果屏幕尺寸大于默认图片尺寸，则不需要压缩
   if (screenWidth > maxWidth) {
     return src
   }

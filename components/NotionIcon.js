@@ -13,7 +13,7 @@ const NotionIcon = ({ icon }) => {
   if (icon.startsWith('http') || icon.startsWith('data:')|| icon.startsWith('notion:')) {
     return <LazyImage src={icon} className='w-8 h-8 my-auto inline mr-1'/>
   }
-
+  console.log(icon)
   return <span className='mr-1'>{icon}</span>
 }
 
